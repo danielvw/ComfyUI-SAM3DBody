@@ -150,6 +150,9 @@ class SAM3DBodyExportFBX:
             joint_coords_flipped[:, 1] = -joint_coords_flipped[:, 1]
             joint_coords_flipped[:, 2] = -joint_coords_flipped[:, 2]
 
+            # Find MHR model path first for both skeleton_data and skinning weights
+            mhr_model_path = find_mhr_model_path(mesh_data)
+
             skeleton_data = {
                 "joint_positions": joint_coords_flipped.tolist(),
                 "num_joints": len(joint_coords),
@@ -160,8 +163,6 @@ class SAM3DBodyExportFBX:
 
             # Extract skinning weights from MHR model
             try:
-                mhr_model_path = find_mhr_model_path(mesh_data)
-
                 if mhr_model_path and os.path.exists(mhr_model_path):
                     mhr_model = torch.jit.load(mhr_model_path, map_location='cpu')
                     lbs = mhr_model.character_torch.linear_blend_skinning
