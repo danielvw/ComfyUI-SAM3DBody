@@ -24,7 +24,18 @@ Run the installation script: `python install.py`
 - **Process Image (Advanced)** - Full control over detection, segmentation, and FOV estimation
 - **Visualize Mesh** - Render 3D mesh overlay on image
 - **Export Mesh** - Save mesh as OBJ/PLY file
+- **Export FBX** - Export rigged character with skeleton and skinning weights to FBX format
 - **Get Mesh Info** - Display mesh statistics
+
+## Fork Changes
+
+This fork includes the following improvements over the upstream repository:
+
+- **FBX Export Enhancement** - Added separate export controls for mesh and skeleton, allowing independent export of geometry and armature
+- **Proper Joint Names** - Fixed joint naming in FBX exports by extracting joint names from MHR model and passing them through the pipeline
+- **Bug Fix** - Fixed initialization order bug where `mhr_model_path` was used before `skeleton_data` was created
+- **Comprehensive Debug Logging** - Added extensive logging throughout the FBX export pipeline for easier troubleshooting of export issues
+- **Improved Reliability** - Moved joint name extraction from Blender runtime to ComfyUI export node to avoid torch loading issues in Blender
 
 ## License
 
