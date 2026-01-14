@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git remote set-url:*)",
+      "Bash(git -C \"c:\\\\comfyui\\\\ComfyUI\\\\custom_nodes\\\\ComfyUI-SAM3DBody\" status)",
+      "Bash(git checkout:*)",
+      "Bash(git remote get-url:*)",
+      "Bash(git add:*)",
+      "Bash(test:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)"
+    ]
+  }
+}
