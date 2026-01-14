@@ -158,13 +158,21 @@ class SAM3DBodyExportFBX:
                 "num_joints": len(joint_coords),
                 "mesh_vertices_bounds_min": mesh_min,
                 "mesh_vertices_bounds_max": mesh_max,
-                "mhr_path": mhr_model_path,  # For extracting joint names in Blender
             }
 
-            # Extract skinning weights from MHR model
+            # Extract skinning weights and joint names from MHR model
             try:
                 if mhr_model_path and os.path.exists(mhr_model_path):
                     mhr_model = torch.jit.load(mhr_model_path, map_location='cpu')
+
+                    # Extract joint names from MHR model
+                    try:
+                        joint_names = mhr_model.get_joint_names()
+                        if joint_names and len(joint_names) > 0:
+                            skeleton_data["joint_names"] = list(joint_names)
+                            print(f"[SAM3D Export] Loaded {len(joint_names)} joint names from MHR model")
+                    except Exception as e:
+                        print(f"[SAM3D Export] Could not extract joint names: {e}")
                     lbs = mhr_model.character_torch.linear_blend_skinning
 
                     vert_indices = lbs.vert_indices_flattened.cpu().numpy().astype(int)
@@ -264,7 +272,14 @@ class SAM3DBodyExportFBX:
                 if not export_skeleton:
                     cmd.append("--no-skeleton")
 
+                print(f"[SAM3D Export] Running Blender command: {' '.join(cmd)}")
                 result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', timeout=BLENDER_TIMEOUT)
+
+                # Always print Blender output for debugging
+                if result.stdout:
+                    print(f"[SAM3D Export] Blender stdout:\n{result.stdout}")
+                if result.stderr:
+                    print(f"[SAM3D Export] Blender stderr:\n{result.stderr}")
 
                 if result.returncode != 0:
                     raise RuntimeError(f"Blender export failed with return code {result.returncode}")
