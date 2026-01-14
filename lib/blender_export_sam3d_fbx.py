@@ -32,6 +32,7 @@ joints = None
 num_joints = 0
 joint_parents_list = None
 skinning_weights = None
+joint_names_list = None
 
 if skeleton_json and os.path.exists(skeleton_json):
     try:
@@ -45,8 +46,45 @@ if skeleton_json and os.path.exists(skeleton_json):
 
         if joint_positions:
             joints = np.array(joint_positions, dtype=np.float32)
+
+        # Try to load joint names from MHR model if path is available
+        mhr_path = skeleton_data.get('mhr_path')
+        if mhr_path:
+            joint_names_list = load_joint_names(mhr_path)
     except Exception as e:
         joints = None
+
+
+def load_joint_names(mhr_path):
+    """Load joint names from MHR model."""
+    if not mhr_path or not os.path.exists(mhr_path):
+        return None
+
+    try:
+        import torch
+        print(f"[SAM3D] Loading joint names from MHR model: {mhr_path}")
+        mhr_model = torch.jit.load(mhr_path, map_location='cpu')
+        joint_names = mhr_model.get_joint_names()
+
+        if joint_names and len(joint_names) > 0:
+            print(f"[SAM3D] Loaded {len(joint_names)} joint names from MHR model")
+            return joint_names
+        else:
+            print("[SAM3D] MHR model returned empty joint names")
+            return None
+    except Exception as e:
+        print(f"[SAM3D] Could not load joint names from MHR model: {e}")
+        return None
+
+
+def get_joint_name(index, joint_names_list):
+    """Get joint name from list or fallback to numbered."""
+    if joint_names_list and index < len(joint_names_list):
+        name = joint_names_list[index]
+        # Sanitize name for Blender (replace spaces, special chars)
+        name = name.replace(' ', '_').replace('-', '_')
+        return name
+    return f'Joint_{index:03d}'
 
 
 # Clean default scene
@@ -156,10 +194,10 @@ if export_skeleton and joints is not None and num_joints > 0:
         rel_joints_corrected[:, 1] = -rel_joints[:, 2]
         rel_joints_corrected[:, 2] = rel_joints[:, 1]
 
-        # Create all bones
+        # Create all bones with proper names
         bones_dict = {}
         for i in range(num_joints):
-            bone_name = f'Joint_{i:03d}'
+            bone_name = get_joint_name(i, joint_names_list)
             bone = edit_bones.new(bone_name)
             bone.head = Vector((rel_joints_corrected[i, 0], rel_joints_corrected[i, 1], rel_joints_corrected[i, 2]))
             bone.tail = Vector((rel_joints_corrected[i, 0], rel_joints_corrected[i, 1], rel_joints_corrected[i, 2] + extrude_size))
@@ -170,15 +208,15 @@ if export_skeleton and joints is not None and num_joints > 0:
             for i in range(num_joints):
                 parent_idx = joint_parents_list[i]
                 if parent_idx >= 0 and parent_idx < num_joints and parent_idx != i:
-                    bone_name = f'Joint_{i:03d}'
-                    parent_bone_name = f'Joint_{parent_idx:03d}'
+                    bone_name = get_joint_name(i, joint_names_list)
+                    parent_bone_name = get_joint_name(parent_idx, joint_names_list)
                     bones_dict[bone_name].parent = bones_dict[parent_bone_name]
                     bones_dict[bone_name].use_connect = False
         else:
-            # Fallback: create flat hierarchy with Joint_000 as root
-            root_bone_name = 'Joint_000'
+            # Fallback: create flat hierarchy with first joint as root
+            root_bone_name = get_joint_name(0, joint_names_list)
             for i in range(1, num_joints):
-                bone_name = f'Joint_{i:03d}'
+                bone_name = get_joint_name(i, joint_names_list)
                 bones_dict[bone_name].parent = bones_dict[root_bone_name]
                 bones_dict[bone_name].use_connect = False
 
@@ -194,9 +232,9 @@ if export_skeleton and joints is not None and num_joints > 0:
 
         # Apply skinning weights if available
         if skinning_weights:
-            # Create vertex groups for each bone
+            # Create vertex groups for each bone with proper names
             for i in range(num_joints):
-                bone_name = f'Joint_{i:03d}'
+                bone_name = get_joint_name(i, joint_names_list)
                 mesh_obj.vertex_groups.new(name=bone_name)
 
             # Assign weights to vertices
@@ -206,7 +244,7 @@ if export_skeleton and joints is not None and num_joints > 0:
                 if influences and len(influences) > 0:
                     for bone_idx, weight in influences:
                         if 0 <= bone_idx < num_joints and weight > 0.0001:
-                            bone_name = f'Joint_{bone_idx:03d}'
+                            bone_name = get_joint_name(bone_idx, joint_names_list)
                             vertex_group = mesh_obj.vertex_groups.get(bone_name)
                             if vertex_group:
                                 vertex_group.add([vert_idx], weight, 'REPLACE')

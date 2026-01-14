@@ -155,6 +155,7 @@ class SAM3DBodyExportFBX:
                 "num_joints": len(joint_coords),
                 "mesh_vertices_bounds_min": mesh_min,
                 "mesh_vertices_bounds_max": mesh_max,
+                "mhr_path": mhr_model_path,  # For extracting joint names in Blender
             }
 
             # Extract skinning weights from MHR model
